@@ -84,6 +84,13 @@ const getPageInfo = (pathname) => {
       icon: "lan",
       breadcrumbs: [],
     };
+  if (pathname.includes("/playground"))
+    return {
+      title: "Playground",
+      description: "Test AI models interactively",
+      icon: "chat",
+      breadcrumbs: [],
+    };
   if (pathname.includes("/endpoint"))
     return {
       title: "Endpoint",

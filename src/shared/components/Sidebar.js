@@ -11,6 +11,7 @@ import { ConfirmModal } from "./Modal";
 
 const navItems = [
   { href: "/dashboard/endpoint", label: "Endpoint", icon: "api" },
+  { href: "/dashboard/playground", label: "Playground", icon: "chat" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
   { href: "/dashboard/combos", label: "Combos", icon: "layers" },
