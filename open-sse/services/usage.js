@@ -579,6 +579,14 @@ async function getKiroUsage(accessToken, providerSpecificData) {
     return quotaInfo;
   };
 
+  const buildResult = (data) => ({
+    plan: data.subscriptionInfo?.subscriptionTitle || "Kiro",
+    quotas: parseKiroUsageBreakdown(data),
+    ...(data.subscriptionInfo && { subscriptionInfo: data.subscriptionInfo }),
+  });
+
+  const AUTH_ERROR = { message: "Kiro quota API: token expired or insufficient permissions. Chat may still work.", quotas: {} };
+
   // Enterprise IDC accounts: Q GET endpoint works without profileArn
   if (!profileArn) {
     const params = new URLSearchParams({ origin: "AI_EDITOR", resourceType: "AGENTIC_REQUEST" });
@@ -586,19 +594,10 @@ async function getKiroUsage(accessToken, providerSpecificData) {
       headers: { "Authorization": `Bearer ${accessToken}`, "Accept": "application/json" },
     });
 
-    if (response.status === 401 || response.status === 403) {
-      return { message: "Kiro quota API: token expired or insufficient permissions. Chat may still work.", quotas: {} };
-    }
-    if (!response.ok) {
-      throw new Error(`Kiro Q API error (${response.status}): ${await response.text()}`);
-    }
+    if (response.status === 401 || response.status === 403) return AUTH_ERROR;
+    if (!response.ok) throw new Error(`Kiro Q API error (${response.status}): ${await response.text()}`);
 
-    const data = await response.json();
-    return {
-      plan: data.subscriptionInfo?.subscriptionTitle || "Kiro",
-      quotas: parseKiroUsageBreakdown(data),
-      ...(data.subscriptionInfo && { subscriptionInfo: data.subscriptionInfo }),
-    };
+    return buildResult(await response.json());
   }
 
   // Builder ID / Social Auth: try CodeWhisperer POST first, fall back to Q GET
@@ -614,13 +613,10 @@ async function getKiroUsage(accessToken, providerSpecificData) {
       body: JSON.stringify({ origin: "AI_EDITOR", profileArn, resourceType: "AGENTIC_REQUEST" }),
     });
 
-    if (response.status === 401 || response.status === 403) {
-      return { message: "Kiro quota API: token expired or insufficient permissions. Chat may still work.", quotas: {} };
-    }
+    if (response.status === 401 || response.status === 403) return AUTH_ERROR;
     if (!response.ok) throw new Error(`CodeWhisperer API error (${response.status})`);
 
-    const data = await response.json();
-    return { plan: data.subscriptionInfo?.subscriptionTitle || "Kiro", quotas: parseKiroUsageBreakdown(data) };
+    return buildResult(await response.json());
   } catch (cwError) {
     // Fallback: Q GET with profileArn
     const params = new URLSearchParams({ origin: "AI_EDITOR", profileArn, resourceType: "AGENTIC_REQUEST" });
@@ -632,11 +628,7 @@ async function getKiroUsage(accessToken, providerSpecificData) {
       throw new Error(`Failed to fetch Kiro usage: ${cwError.message} | Q fallback: ${fallbackResponse.status}`);
     }
 
-    const fallbackData = await fallbackResponse.json();
-    return {
-      plan: fallbackData.subscriptionInfo?.subscriptionTitle || "Kiro",
-      quotas: parseKiroUsageBreakdown(fallbackData),
-    };
+    return buildResult(await fallbackResponse.json());
   }
 }
 
